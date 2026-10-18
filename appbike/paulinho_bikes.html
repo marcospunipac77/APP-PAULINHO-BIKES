@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Paulinho Bikes | Gestão Mobile</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="paulinho_bikes.css">
+</head>
+<body>
+
+    <!-- SIDEBAR / NAV MOBILE -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="mostrarTela('dashboard', this)">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Início</span>
+        </button>
+        <button class="nav-item" onclick="mostrarTela('pedidos', this)">
+            <i class="fa-solid fa-list-ul"></i>
+            <span>Vendas</span>
+        </button>
+        <button class="nav-item" onclick="mostrarTela('novo', this)">
+            <div class="plus-btn"><i class="fa-solid fa-plus"></i></div>
+        </button>
+        <button class="nav-item" onclick="mostrarTela('clientes', this)">
+            <i class="fa-solid fa-users"></i>
+            <span>Clientes</span>
+        </button>
+        <button class="nav-item" onclick="mostrarTela('config', this)">
+            <i class="fa-solid fa-gear"></i>
+            <span>Ajustes</span>
+        </button>
+    </nav>
+
+    <main class="app-container">
+        
+        <!-- HEADER -->
+        <header class="main-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-bicycle logo-icon"></i>
+                <div>
+                    <h1>Paulinho<span>Bikes</span></h1>
+                    <p>SISTEMA DE GESTÃO</p>
+                </div>
+            </div>
+            <div class="user-profile">
+                <i class="fa-solid fa-circle-user"></i>
+            </div>
+        </header>
+
+        <!-- TELA: DASHBOARD -->
+        <section id="dashboard" class="tela-app">
+            <div class="welcome-msg">
+                <h2>Olá, Paulinho! 👋</h2>
+                <p>Veja como estão os negócios hoje.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card yellow">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <div>
+                        <span id="dash-total-vendas">0</span>
+                        <p>Vendas Total</p>
+                    </div>
+                </div>
+                <div class="stat-card black">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <div>
+                        <span id="dash-vendas-mes">0</span>
+                        <p>Este Mês</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <h3>Distribuição por Aro</h3>
+                <canvas id="chartAros"></canvas>
+            </div>
+
+            <div class="recent-orders">
+                <div class="section-header">
+                    <h3>Últimas Vendas</h3>
+                    <button onclick="mostrarTela('pedidos')">Ver tudo</button>
+                </div>
+                <div id="lista-recente" class="mini-lista">
+                    <!-- Gerado via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA: LISTA DE PEDIDOS -->
+        <section id="pedidos" class="tela-app escondido">
+            <div class="page-title">
+                <h2>Todas as Vendas</h2>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="inputBusca" placeholder="Buscar por cliente ou quadro..." oninput="filtrarVendas()">
+                </div>
+            </div>
+
+            <div id="lista-vendas-full" class="lista-pedidos-container">
+                <!-- Gerado via JS -->
+            </div>
+        </section>
+
+        <!-- TELA: NOVO REGISTRO -->
+        <section id="novo" class="tela-app escondido">
+            <div class="page-title">
+                <h2>Novo Pedido</h2>
+                <p>Preencha os dados da bicicleta e do cliente.</p>
+            </div>
+
+            <form id="formVenda" class="modern-form">
+                <div class="form-group">
+                    <label>Nome do Cliente</label>
+                    <input type="text" id="cliente" placeholder="Quem está comprando?" required>
+                </div>
+
+                <div class="form-group">
+                    <label>WhatsApp</label>
+                    <input type="tel" id="telefone" placeholder="(00) 00000-0000" maxlength="15" required>
+                </div>
+
+                <hr class="divider">
+
+                <div class="form-group">
+                    <label>Marca / Modelo</label>
+                    <input type="text" id="marca" placeholder="Ex: Caloi Explorer Expert" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Aro</label>
+                        <select id="aro">
+                            <option value="29">Aro 29</option>
+                            <option value="26">Aro 26</option>
+                            <option value="24">Aro 24</option>
+                            <option value="20">Aro 20</option>
+                            <option value="16">Aro 16</option>
+                            <option value="12">Aro 12</option>
+                            <option value="700">700c (Speed)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="valor" placeholder="0,00" step="0.01">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Número do Quadro</label>
+                    <input type="text" id="quadro" placeholder="Identificação do Chassi">
+                </div>
+
+                <button type="button" class="btn-primary" onclick="salvarVenda()">
+                    <i class="fa-solid fa-check"></i> FINALIZAR VENDA
+                </button>
+            </form>
+        </section>
+
+        <!-- TELA: CONFIG/AJUSTES -->
+        <section id="config" class="tela-app escondido">
+            <div class="page-title">
+                <h2>Ajustes</h2>
+            </div>
+            <div class="config-list">
+                <button class="config-item" onclick="limparSistema()">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Limpar Todos os Dados</span>
+                </button>
+                <button class="config-item" onclick="exportarDados()">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Fazer Backup (JSON)</span>
+                </button>
+                <div class="app-info">
+                    <p>Paulinho Bikes App v1.0</p>
+                    <p>Desenvolvido para Mobile</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast">Mensagem aqui</div>
+
+    <script src="paulinho_bikes.js"></script>
+</body>
+</html>
