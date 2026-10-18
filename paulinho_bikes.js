@@ -35,7 +35,89 @@ function mostrarTela(id, btn) {
         renderDashboard();
     } else if (id === 'pedidos') {
         renderListaCompleta();
+    } else if (id === 'clientes') {
+        renderClientes();
     }
+}
+
+// RENDERIZAR CLIENTES
+function renderClientes(lista = null) {
+    const container = document.getElementById("lista-clientes");
+    if (!container) return;
+    container.innerHTML = "";
+
+    // Obter lista única de clientes baseada nas vendas
+    // ou usar uma lista de clientes dedicada se você decidir separar o cadastro
+    const clientesMap = new Map();
+    
+    vendas.forEach(v => {
+        if (!clientesMap.has(v.cliente)) {
+            clientesMap.set(v.cliente, {
+                nome: v.cliente,
+                telefone: v.telefone,
+                ultimaCompra: v.data,
+                totalGasto: v.valor,
+                vendas: 1
+            });
+        } else {
+            const c = clientesMap.get(v.cliente);
+            c.totalGasto += v.valor;
+            c.vendas += 1;
+            if (new Date(v.data) > new Date(c.ultimaCompra)) {
+                c.ultimaCompra = v.data;
+            }
+        }
+    });
+
+    const listaFinal = lista || Array.from(clientesMap.values());
+
+    if (listaFinal.length === 0) {
+        container.innerHTML = "<p style='text-align:center; color:#555; padding:20px;'>Nenhum cliente cadastrado.</p>";
+        return;
+    }
+
+    listaFinal.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(c => {
+        container.innerHTML += `
+            <div class="order-card">
+                <div class="order-info">
+                    <h4>${c.nome}</h4>
+                    <p>${c.telefone}</p>
+                    <p>Compras: ${c.vendas} | Total: ${formatarMoeda(c.totalGasto)}</p>
+                </div>
+                <div class="order-price">
+                    <a href="https://wa.me/55${c.telefone.replace(/\D/g,'')}" target="_blank" style="color:#25D366; text-decoration:none; font-size:18px;">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function filtrarClientes() {
+    const termo = document.getElementById("buscaCliente").value.toLowerCase();
+    
+    const clientesMap = new Map();
+    vendas.forEach(v => {
+        if (!clientesMap.has(v.cliente)) {
+            clientesMap.set(v.cliente, {
+                nome: v.cliente,
+                telefone: v.telefone,
+                totalGasto: v.valor,
+                vendas: 1
+            });
+        } else {
+            const c = clientesMap.get(v.cliente);
+            c.totalGasto += v.valor;
+            c.vendas += 1;
+        }
+    });
+
+    const filtrados = Array.from(clientesMap.values()).filter(c => 
+        c.nome.toLowerCase().includes(termo)
+    );
+    
+    renderClientes(filtrados);
 }
 
 // SALVAR VENDA
