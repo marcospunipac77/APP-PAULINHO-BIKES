@@ -2,145 +2,160 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Paulinho Bikes | Gestão Mobile</title>
-    
-    <!-- Google Fonts -->
+    <meta name="description" content="Sistema de gestão de vendas e clientes da Paulinho Bikes.">
+    <title>Paulinho Bikes | Gestão</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <link rel="stylesheet" href="paulinho_bikes.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="paulinho_bikes.js"></script>
 </head>
 <body>
-
-    <!-- SIDEBAR / NAV MOBILE -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="mostrarTela('dashboard', this)">
-            <i class="fa-solid fa-chart-pie"></i>
+    <nav class="bottom-nav" aria-label="Navegação principal">
+        <button class="nav-item active" type="button" data-screen="dashboard" aria-current="page" aria-label="Início">
+            <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
             <span>Início</span>
         </button>
-        <button class="nav-item" onclick="mostrarTela('pedidos', this)">
-            <i class="fa-solid fa-list-ul"></i>
+        <button class="nav-item" type="button" data-screen="pedidos" aria-label="Vendas">
+            <i class="fa-solid fa-list-ul" aria-hidden="true"></i>
             <span>Vendas</span>
         </button>
-        <button class="nav-item" onclick="mostrarTela('novo', this)">
-            <div class="plus-btn"><i class="fa-solid fa-plus"></i></div>
+        <button class="nav-item" type="button" data-screen="novo" aria-label="Novo pedido">
+            <span class="plus-btn"><i class="fa-solid fa-plus" aria-hidden="true"></i></span>
+            <span class="visually-hidden">Novo pedido</span>
         </button>
-        <button class="nav-item" onclick="mostrarTela('clientes', this)">
-            <i class="fa-solid fa-users"></i>
+        <button class="nav-item" type="button" data-screen="clientes" aria-label="Clientes">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
             <span>Clientes</span>
         </button>
-        <button class="nav-item" onclick="mostrarTela('config', this)">
-            <i class="fa-solid fa-gear"></i>
+        <button class="nav-item" type="button" data-screen="config" aria-label="Ajustes">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
             <span>Ajustes</span>
         </button>
     </nav>
 
     <main class="app-container">
-        
-        <!-- HEADER -->
         <header class="main-header">
             <div class="logo-area">
-                <i class="fa-solid fa-bicycle logo-icon"></i>
+                <i class="fa-solid fa-bicycle logo-icon" aria-hidden="true"></i>
                 <div>
                     <h1>Paulinho<span>Bikes</span></h1>
                     <p>SISTEMA DE GESTÃO</p>
                 </div>
             </div>
-            <div class="user-profile">
-                <i class="fa-solid fa-circle-user"></i>
-            </div>
+            <i class="fa-solid fa-circle-user user-profile" aria-hidden="true"></i>
         </header>
 
-        <!-- TELA: DASHBOARD -->
-        <section id="dashboard" class="tela-app">
+        <section id="dashboard" class="tela-app" aria-labelledby="dashboard-title">
             <div class="welcome-msg">
-                <h2>Olá, Paulinho! 👋</h2>
+                <h2 id="dashboard-title">Olá, Paulinho! <span aria-hidden="true">👋</span></h2>
                 <p>Veja como estão os negócios hoje.</p>
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card yellow">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                    <div>
-                        <span id="dash-total-vendas">0</span>
-                        <p>Vendas Total</p>
-                    </div>
-                </div>
-                <div class="stat-card black">
-                    <i class="fa-solid fa-calendar-check"></i>
-                    <div>
-                        <span id="dash-vendas-mes">0</span>
-                        <p>Este Mês</p>
-                    </div>
-                </div>
+                <article class="stat-card yellow">
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                    <div><span id="dash-total-vendas">0</span><p>Vendas registradas</p></div>
+                </article>
+                <article class="stat-card black">
+                    <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+                    <div><span id="dash-vendas-mes">0</span><p>Vendas este mês</p></div>
+                </article>
+                <article class="stat-card black">
+                    <i class="fa-solid fa-sack-dollar" aria-hidden="true"></i>
+                    <div><span id="dash-faturamento-total">R$ 0,00</span><p>Faturamento total</p></div>
+                </article>
+                <article class="stat-card black">
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+                    <div><span id="dash-faturamento-mes">R$ 0,00</span><p>Faturamento do mês</p></div>
+                </article>
             </div>
 
-            <div class="chart-section">
-                <h3>Distribuição por Aro</h3>
-                <canvas id="chartAros"></canvas>
-            </div>
+            <section class="chart-section" aria-labelledby="titulo-grafico">
+                <div class="section-header chart-header">
+                    <h3 id="titulo-grafico">Faturamento por mês</h3>
+                    <label class="chart-mode">
+                        <span class="visually-hidden">Informação exibida no gráfico</span>
+                        <select id="modoGrafico" aria-label="Informação exibida no gráfico">
+                            <option value="faturamento">Faturamento</option>
+                            <option value="quantidade">Quantidade de vendas</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartMensal" role="img" aria-label="Gráfico de faturamento mensal"></canvas>
+                    <p id="chart-fallback" class="empty-state escondido">Gráfico indisponível. Os totais continuam disponíveis acima.</p>
+                </div>
+            </section>
 
-            <div class="recent-orders">
+            <section class="recent-orders" aria-labelledby="recentes-title">
                 <div class="section-header">
-                    <h3>Últimas Vendas</h3>
-                    <button onclick="mostrarTela('pedidos')">Ver tudo</button>
+                    <h3 id="recentes-title">Últimas vendas</h3>
+                    <button type="button" data-screen="pedidos">Ver todas</button>
                 </div>
-                <div id="lista-recente" class="mini-lista">
-                    <!-- Gerado via JS -->
-                </div>
-            </div>
+                <div id="lista-recente" class="mini-lista"></div>
+            </section>
         </section>
 
-        <!-- TELA: LISTA DE PEDIDOS -->
-        <section id="pedidos" class="tela-app escondido">
+        <section id="pedidos" class="tela-app escondido" aria-labelledby="pedidos-title">
             <div class="page-title">
-                <h2>Todas as Vendas</h2>
-                <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="inputBusca" placeholder="Buscar por cliente ou quadro..." oninput="filtrarVendas()">
-                </div>
+                <h2 id="pedidos-title">Todas as vendas</h2>
+                <label class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <span class="visually-hidden">Buscar vendas</span>
+                    <input type="search" id="inputBusca" placeholder="Cliente, telefone, quadro ou bicicleta..." autocomplete="off">
+                </label>
             </div>
-
-            <div id="lista-vendas-full" class="lista-pedidos-container">
-                <!-- Gerado via JS -->
-            </div>
+            <div id="lista-vendas-full" class="lista-pedidos-container"></div>
         </section>
 
-        <!-- TELA: NOVO REGISTRO -->
-        <section id="novo" class="tela-app escondido">
+        <section id="novo" class="tela-app escondido" aria-labelledby="novo-title">
             <div class="page-title">
-                <h2>Novo Pedido</h2>
+                <h2 id="novo-title">Novo pedido</h2>
                 <p>Preencha os dados da bicicleta e do cliente.</p>
             </div>
-
             <form id="formVenda" class="modern-form">
                 <div class="form-group">
-                    <label>Nome do Cliente</label>
-                    <input type="text" id="cliente" placeholder="Quem está comprando?" required>
+                    <label for="cliente">Nome do cliente</label>
+                    <input type="text" id="cliente" name="cliente" placeholder="Quem está comprando?" autocomplete="name" maxlength="100" required>
                 </div>
-
                 <div class="form-group">
-                    <label>WhatsApp</label>
-                    <input type="tel" id="telefone" placeholder="(00) 00000-0000" maxlength="15" required>
+                    <label for="telefone">WhatsApp</label>
+                    <input type="tel" id="telefone" name="telefone" placeholder="(00) 00000-0000" autocomplete="tel" inputmode="tel" maxlength="15" required>
                 </div>
-
-                <hr class="divider">
-
-                <div class="form-group">
-                    <label>Marca / Modelo</label>
-                    <input type="text" id="marca" placeholder="Ex: Caloi Explorer Expert" required>
-                </div>
-
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Aro</label>
-                        <select id="aro">
+                        <label for="cpf">CPF</label>
+                        <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" maxlength="14" aria-describedby="cpf-ajuda">
+                        <small id="cpf-ajuda" class="field-hint">Opcional. Se preencher, informe os 11 números do CPF.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cep">CEP</label>
+                        <input type="text" id="cep" name="cep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="endereco">Endereço</label>
+                    <input type="text" id="endereco" name="endereco" placeholder="Rua, número, bairro, cidade/UF" autocomplete="street-address" maxlength="180">
+                </div>
+                <hr class="divider">
+                <div class="form-group">
+                    <label for="marca">Marca / modelo</label>
+                    <input type="text" id="marca" name="marca" placeholder="Ex.: Caloi Explorer Expert" maxlength="100" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="aro">Aro</label>
+                        <select id="aro" name="aro">
                             <option value="29">Aro 29</option>
                             <option value="26">Aro 26</option>
                             <option value="24">Aro 24</option>
@@ -151,64 +166,213 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Valor (R$)</label>
-                        <input type="number" id="valor" placeholder="0,00" step="0.01">
+                        <label for="metodoPagamento">Forma de pagamento</label>
+                        <select id="metodoPagamento" name="metodoPagamento" required>
+                            <option value="pix">PIX</option>
+                            <option value="dinheiro">Dinheiro físico</option>
+                            <option value="cartao">Cartão</option>
+                        </select>
+                    </div>
+                    <div id="grupoParcelas" class="form-group escondido">
+                        <label for="parcelas">Parcelas no cartão</label>
+                        <select id="parcelas" name="parcelas">
+                            <option value="1">À vista</option>
+                            <option value="2">2 parcelas</option>
+                            <option value="3">3 parcelas</option>
+                            <option value="4">4 parcelas</option>
+                            <option value="5">5 parcelas</option>
+                            <option value="6">6 parcelas</option>
+                            <option value="7">7 parcelas</option>
+                            <option value="8">8 parcelas</option>
+                            <option value="9">9 parcelas</option>
+                            <option value="10">10 parcelas</option>
+                            <option value="11">11 parcelas</option>
+                            <option value="12">12 parcelas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="valor">Valor (R$)</label>
+                        <input type="number" id="valor" name="valor" placeholder="0,00" inputmode="decimal" min="0" step="0.01" value="0" required>
                     </div>
                 </div>
-
                 <div class="form-group">
-                    <label>Número do Quadro</label>
-                    <input type="text" id="quadro" placeholder="Identificação do Chassi">
+                    <label for="quadro">Número do quadro</label>
+                    <input type="text" id="quadro" name="quadro" placeholder="Identificação do chassi" maxlength="60">
                 </div>
-
-                <button type="button" class="btn-primary" onclick="salvarVenda()">
-                    <i class="fa-solid fa-check"></i> FINALIZAR VENDA
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Registrar venda
                 </button>
             </form>
         </section>
 
-        <!-- TELA: CLIENTES -->
-        <section id="clientes" class="tela-app escondido">
-            <div class="page-title">
-                <h2>Clientes</h2>
-                <p>Lista de clientes cadastrados.</p>
-                <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="buscaCliente" placeholder="Pesquisar cliente..." oninput="filtrarClientes()">
+        <dialog id="dialogEditarVenda" class="edit-dialog sale-edit-dialog" aria-labelledby="editar-venda-title">
+            <form id="formEditarVenda" class="modern-form">
+                <h2 id="editar-venda-title">Editar venda</h2>
+                <input type="hidden" id="idVendaEditada">
+                <div class="form-group">
+                    <label for="clienteVendaEditada">Nome do cliente</label>
+                    <input type="text" id="clienteVendaEditada" maxlength="100" required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label for="telefoneVendaEditada">WhatsApp</label>
+                    <input type="tel" id="telefoneVendaEditada" inputmode="tel" maxlength="15" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cpfVendaEditada">CPF</label>
+                        <input type="text" id="cpfVendaEditada" inputmode="numeric" maxlength="14">
+                    </div>
+                    <div class="form-group">
+                        <label for="cepVendaEditada">CEP</label>
+                        <input type="text" id="cepVendaEditada" inputmode="numeric" maxlength="9">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="enderecoVendaEditada">Endereço</label>
+                    <input type="text" id="enderecoVendaEditada" maxlength="180">
+                </div>
+                <div class="form-group">
+                    <label for="marcaVendaEditada">Marca / modelo</label>
+                    <input type="text" id="marcaVendaEditada" maxlength="100" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="aroVendaEditada">Aro</label>
+                        <select id="aroVendaEditada">
+                            <option value="29">Aro 29</option>
+                            <option value="26">Aro 26</option>
+                            <option value="24">Aro 24</option>
+                            <option value="20">Aro 20</option>
+                            <option value="16">Aro 16</option>
+                            <option value="12">Aro 12</option>
+                            <option value="700">700c (Speed)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="valorVendaEditada">Valor (R$)</label>
+                        <input type="number" id="valorVendaEditada" inputmode="decimal" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="metodoPagamentoVendaEditada">Forma de pagamento</label>
+                    <select id="metodoPagamentoVendaEditada" required>
+                        <option value="pix">PIX</option>
+                        <option value="dinheiro">Dinheiro físico</option>
+                        <option value="cartao">Cartão</option>
+                    </select>
+                </div>
+                <div id="grupoParcelasVendaEditada" class="form-group escondido">
+                    <label for="parcelasVendaEditada">Parcelas no cartão</label>
+                    <select id="parcelasVendaEditada">
+                        <option value="1">À vista</option>
+                        <option value="2">2 parcelas</option>
+                        <option value="3">3 parcelas</option>
+                        <option value="4">4 parcelas</option>
+                        <option value="5">5 parcelas</option>
+                        <option value="6">6 parcelas</option>
+                        <option value="7">7 parcelas</option>
+                        <option value="8">8 parcelas</option>
+                        <option value="9">9 parcelas</option>
+                        <option value="10">10 parcelas</option>
+                        <option value="11">11 parcelas</option>
+                        <option value="12">12 parcelas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quadroVendaEditada">Número do quadro</label>
+                    <input type="text" id="quadroVendaEditada" maxlength="60">
+                </div>
+                <div class="dialog-actions">
+                    <button class="config-item" id="cancelarEdicaoVenda" type="button">Cancelar</button>
+                    <button class="btn-primary" type="submit">Salvar venda</button>
+                </div>
+            </form>
+        </dialog>
 
-            <div id="lista-clientes" class="lista-pedidos-container">
-                <!-- Gerado via JS -->
+        <section id="clientes" class="tela-app escondido" aria-labelledby="clientes-title">
+            <div class="page-title">
+                <h2 id="clientes-title">Clientes</h2>
+                <p>Clientes reunidos a partir das vendas registradas.</p>
+                <label class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <span class="visually-hidden">Pesquisar clientes</span>
+                    <input type="search" id="buscaCliente" placeholder="Nome ou telefone..." autocomplete="off">
+                </label>
             </div>
+            <div id="lista-clientes" class="lista-pedidos-container"></div>
         </section>
 
-        <!-- TELA: CONFIG/AJUSTES -->
-        <section id="config" class="tela-app escondido">
-            <div class="page-title">
-                <h2>Ajustes</h2>
-            </div>
-            <div class="config-list">
-                <button class="config-item" onclick="limparSistema()">
-                    <i class="fa-solid fa-trash-can"></i>
-                    <span>Limpar Todos os Dados</span>
+        <dialog id="dialogEditarCliente" class="edit-dialog" aria-labelledby="editar-cliente-title">
+            <form id="formEditarCliente" class="modern-form">
+                <h2 id="editar-cliente-title">Editar cliente</h2>
+                <input type="hidden" id="chaveClienteOriginal">
+                <div class="form-group">
+                    <label for="nomeClienteEditado">Nome</label>
+                    <input type="text" id="nomeClienteEditado" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefoneClienteEditado">WhatsApp</label>
+                    <input type="tel" id="telefoneClienteEditado" inputmode="tel" maxlength="15" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cpfClienteEditado">CPF</label>
+                        <input type="text" id="cpfClienteEditado" inputmode="numeric" maxlength="14" aria-describedby="cpf-cliente-ajuda">
+                        <small id="cpf-cliente-ajuda" class="field-hint">Opcional. Se preencher, informe os 11 números do CPF.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="cepClienteEditado">CEP</label>
+                        <input type="text" id="cepClienteEditado" inputmode="numeric" maxlength="9">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="enderecoClienteEditado">Endereço</label>
+                    <input type="text" id="enderecoClienteEditado" maxlength="180">
+                </div>
+                <div class="dialog-actions">
+                    <button class="config-item" id="cancelarEdicaoCliente" type="button">Cancelar</button>
+                    <button class="btn-primary" type="submit">Salvar alterações</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog id="dialogComprovante" class="receipt-dialog" aria-labelledby="comprovante-title">
+            <header class="receipt-dialog-header">
+                <h2 id="comprovante-title">Comprovante da venda</h2>
+                <button id="fecharComprovante" class="receipt-close" type="button" aria-label="Fechar comprovante">×</button>
+            </header>
+            <iframe id="frameComprovante" title="Pré-visualização do comprovante da venda"></iframe>
+            <footer class="receipt-dialog-actions">
+                <button id="imprimirComprovante" class="btn-primary" type="button" disabled>
+                    <i class="fa-solid fa-print" aria-hidden="true"></i> Imprimir / Salvar como PDF
                 </button>
-                <button class="config-item" onclick="exportarDados()">
-                    <i class="fa-solid fa-download"></i>
-                    <span>Fazer Backup (JSON)</span>
+            </footer>
+        </dialog>
+
+        <section id="config" class="tela-app escondido" aria-labelledby="config-title">
+            <div class="page-title"><h2 id="config-title">Ajustes e backups</h2></div>
+            <div class="config-list">
+                <button class="config-item" id="exportarDados" type="button">
+                    <i class="fa-solid fa-download" aria-hidden="true"></i>
+                    <span>Baixar backup (JSON)</span>
+                </button>
+                <button class="config-item" id="importarBackup" type="button">
+                    <i class="fa-solid fa-upload" aria-hidden="true"></i>
+                    <span>Restaurar backup (JSON)</span>
+                </button>
+                <input id="arquivoBackup" type="file" accept=".json,application/json" hidden>
+                <button class="config-item danger-action" id="limparSistema" type="button">
+                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                    <span>Apagar todas as vendas</span>
                 </button>
                 <div class="app-info">
                     <p>Paulinho Bikes App v1.0</p>
-                    <p>Desenvolvido para Mobile</p>
+                    <p>Seus dados ficam salvos neste dispositivo.</p>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="toast">Mensagem aqui</div>
-
-    <script src="paulinho_bikes.js"></script>
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
