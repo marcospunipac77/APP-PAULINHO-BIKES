@@ -167,6 +167,22 @@
             </form>
         </section>
 
+        <!-- TELA: CLIENTES -->
+        <section id="clientes" class="tela-app escondido">
+            <div class="page-title">
+                <h2>Clientes</h2>
+                <p>Lista de clientes cadastrados.</p>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="buscaCliente" placeholder="Pesquisar cliente..." oninput="filtrarClientes()">
+                </div>
+            </div>
+
+            <div id="lista-clientes" class="lista-pedidos-container">
+                <!-- Gerado via JS -->
+            </div>
+        </section>
+
         <!-- TELA: CONFIG/AJUSTES -->
         <section id="config" class="tela-app escondido">
             <div class="page-title">
