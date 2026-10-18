@@ -812,9 +812,30 @@ function imprimirNota(id) {
                     .detail-card.bike, .detail-card.address { grid-column: auto; }
                 }
                 @media print {
-                    @page { margin: 12mm; }
-                    body { max-width: none; margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-                    .receipt { border-color: #d5d5d5; box-shadow: none; }
+                    @page { size: A4 portrait; margin: 8mm; }
+                    html, body { width: 100%; height: auto; }
+                    body { max-width: none; margin: 0; padding: 0; font-size: 10pt; line-height: 1.3; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                    .receipt { overflow: visible; border-color: #d5d5d5; border-radius: 0; box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+                    .brand { gap: 10px; padding: 12px 18px; border-bottom-width: 3px; }
+                    .brand-mark { width: 40px; height: 40px; flex-basis: 40px; border-radius: 9px; font-size: 21px; }
+                    .brand h1 { font-size: 18pt; }
+                    .brand p { margin-top: 2px; font-size: 8pt; letter-spacing: 1.4px; }
+                    .receipt-content { padding: 14px 18px; }
+                    .receipt-heading { gap: 12px; margin-bottom: 12px; }
+                    .receipt-heading h2 { margin-bottom: 2px; font-size: 15pt; }
+                    .receipt-heading p { font-size: 9pt; }
+                    .sale-id { padding: 5px 8px; font-size: 8pt; }
+                    .details { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+                    .detail-card { padding: 8px 10px; border-radius: 6px; }
+                    .detail-label { margin-bottom: 2px; font-size: 7.5pt; letter-spacing: .4px; }
+                    .detail-card strong { font-size: 9.5pt; }
+                    .detail-card.bike { grid-column: 1 / -1; }
+                    .detail-card.bike strong { font-size: 11pt; }
+                    .detail-card.address { grid-column: 1 / -1; }
+                    .total { gap: 10px; margin-top: 12px; padding: 11px 14px; border-radius: 7px; }
+                    .total span { font-size: 9pt; }
+                    .total strong { font-size: 20pt; }
+                    .legal { margin-top: 9px; font-size: 8pt; }
                 }
             </style>
         </head>
