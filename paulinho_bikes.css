@@ -732,3 +732,124 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+.auth-pending .bottom-nav,
+.auth-pending .app-container,
+.auth-required .bottom-nav,
+.auth-required .app-container {
+    visibility: hidden;
+}
+
+.auth-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+    overflow-y: auto;
+    padding: 24px 16px;
+    background: var(--dark);
+}
+
+.auth-gate.escondido {
+    display: none;
+}
+
+.auth-card {
+    width: min(100%, 420px);
+    padding: 28px;
+    border: 1px solid #333;
+    border-radius: 20px;
+    background: var(--gray-dark);
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.4);
+}
+
+.auth-card > .logo-area {
+    margin-bottom: 30px;
+}
+
+.auth-card h2 {
+    margin-bottom: 8px;
+    font-size: 22px;
+}
+
+.auth-status,
+.account-status,
+.account-email {
+    color: var(--text-muted);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.auth-status {
+    margin-bottom: 22px;
+}
+
+.auth-error,
+.account-error {
+    color: #ff8585;
+}
+
+.auth-card .modern-form .form-group {
+    margin-bottom: 16px;
+}
+
+.auth-card .btn-primary {
+    margin-top: 8px;
+}
+
+.auth-secondary,
+.auth-link {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #454545;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-white);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-secondary {
+    margin-top: 12px;
+}
+
+.auth-link {
+    margin-top: 8px;
+    border: 0;
+    color: var(--primary);
+}
+
+.auth-card :focus-visible,
+.account-panel :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+.account-panel {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+    border-radius: 15px;
+    background: var(--gray-dark);
+}
+
+.account-panel h3 {
+    font-size: 17px;
+}
+
+.account-panel .config-item {
+    margin: 0;
+    padding: 14px;
+}
+
+.account-panel a {
+    color: var(--primary);
+}
+
+.account-panel .account-status:empty {
+    display: none;
+}
