@@ -17,9 +17,46 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="paulinho_bikes.css">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="supabase-config.js"></script>
     <script defer src="paulinho_bikes.js"></script>
 </head>
-<body>
+<body class="auth-pending">
+    <section id="authGate" class="auth-gate escondido" aria-labelledby="auth-title">
+        <div class="auth-card">
+            <div class="logo-area">
+                <i class="fa-solid fa-bicycle logo-icon" aria-hidden="true"></i>
+                <div>
+                    <h1>Paulinho<span>Bikes</span></h1>
+                    <p>SISTEMA DE GESTÃO</p>
+                </div>
+            </div>
+            <h2 id="auth-title">Acesse sua conta</h2>
+            <p id="authStatus" class="auth-status" role="status" aria-live="polite">Conectando ao serviço de contas...</p>
+            <form id="formLogin" class="modern-form">
+                <div class="form-group">
+                    <label for="authEmail">E-mail</label>
+                    <input id="authEmail" type="email" autocomplete="email" required maxlength="254">
+                </div>
+                <div class="form-group">
+                    <label for="authPassword">Senha</label>
+                    <input id="authPassword" type="password" autocomplete="current-password" required minlength="8">
+                </div>
+                <button class="btn-primary" type="submit">Entrar</button>
+                <button id="criarConta" class="auth-secondary" type="button">Criar conta</button>
+                <button id="recuperarSenha" class="auth-link" type="button">Esqueci minha senha</button>
+            </form>
+            <form id="formRedefinirSenha" class="modern-form escondido">
+                <div class="form-group">
+                    <label for="novaSenha">Nova senha</label>
+                    <input id="novaSenha" type="password" autocomplete="new-password" required minlength="8">
+                </div>
+                <button class="btn-primary" type="submit">Salvar nova senha</button>
+            </form>
+            <button id="tentarNovamente" class="auth-secondary escondido" type="button">Tentar conectar novamente</button>
+        </div>
+    </section>
+
     <nav class="bottom-nav" aria-label="Navegação principal">
         <button class="nav-item active" type="button" data-screen="dashboard" aria-current="page" aria-label="Início">
             <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
@@ -352,6 +389,24 @@
         <section id="config" class="tela-app escondido" aria-labelledby="config-title">
             <div class="page-title"><h2 id="config-title">Ajustes e backups</h2></div>
             <div class="config-list">
+                <section class="account-panel" aria-labelledby="account-title">
+                    <h3 id="account-title">Conta e sincronização</h3>
+                    <p id="accountDescription">Seus dados ficam salvos neste dispositivo.</p>
+                    <p id="accountStatus" class="account-status" role="status" aria-live="polite"></p>
+                    <p id="accountEmail" class="account-email escondido"></p>
+                    <button class="config-item escondido" id="importarDadosLegados" type="button">
+                        <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                        <span>Importar vendas antigas deste dispositivo</span>
+                    </button>
+                    <button class="config-item escondido" id="sairConta" type="button">
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                        <span>Sair da conta</span>
+                    </button>
+                    <p id="accountSetupHint" class="field-hint escondido">
+                        Para ativar contas e sincronização, crie um projeto Supabase e siga
+                        <a href="CONFIGURAR-SUPABASE.md" target="_blank" rel="noopener">o guia de configuração</a>.
+                    </p>
+                </section>
                 <button class="config-item" id="exportarDados" type="button">
                     <i class="fa-solid fa-download" aria-hidden="true"></i>
                     <span>Baixar backup (JSON)</span>
@@ -367,7 +422,7 @@
                 </button>
                 <div class="app-info">
                     <p>Paulinho Bikes App v1.0</p>
-                    <p>Seus dados ficam salvos neste dispositivo.</p>
+                    <p>Com uma conta configurada, seus dados são sincronizados com segurança.</p>
                 </div>
             </div>
         </section>
