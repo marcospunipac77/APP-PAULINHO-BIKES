@@ -1,6 +1,9 @@
 "use strict";
 
 const STORAGE_KEY = "paulinho_bikes_vendas";
+const LEGACY_STORAGE_KEY = `${STORAGE_KEY}_legado`;
+const LEGACY_OWNER_KEY = `${STORAGE_KEY}_legado_conta`;
+const LEGACY_MODE_KEY = `${STORAGE_KEY}_legado_modo`;
 const moneyFormatter = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL"
@@ -10,18 +13,84 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR");
 let vendas = [];
 let chartMensal = null;
 let toastTimeout;
+let clienteSupabase = null;
+let usuarioAutenticado = null;
+let canalVendas = null;
+let filaSincronizacao = Promise.resolve();
+let idsVendasNuvem = new Set();
+let snapshotVendasNuvem = new Map();
+let vendasLegadasNaAbertura = [];
+let versaoLocalVendas = 0;
+let contaCarregada = false;
+let usuarioCarregandoId = null;
+let recuperacaoSenhaAtiva = false;
+let erroSincronizacaoConta = null;
 
 document.addEventListener("DOMContentLoaded", inicializarApp);
 
-function inicializarApp() {
+async function inicializarApp() {
     const resultado = carregarVendas();
     vendas = resultado.vendas;
+    vendasLegadasNaAbertura = [...vendas];
     configurarEventos();
     renderDashboard();
     renderListaCompleta();
 
     if (resultado.erro) {
         mostrarToast(resultado.erro);
+    }
+
+    const config = window.PAULINHO_SUPABASE_CONFIG || {};
+    const url = typeof config.url === "string" ? config.url.trim() : "";
+    const anonKey = typeof config.anonKey === "string" ? config.anonKey.trim() : "";
+    if (!url && !anonKey) {
+        atualizarEstadoContaLocal();
+        document.body.classList.remove("auth-pending");
+        return;
+    }
+
+    if (!url || !anonKey) {
+        atualizarEstadoContaLocal();
+        mostrarStatusConta("A URL e a chave pública do Supabase precisam estar preenchidas.", true);
+        document.body.classList.remove("auth-pending");
+        mostrarToast("Configuração do Supabase incompleta.");
+        return;
+    }
+
+    document.body.classList.add("auth-required");
+    document.getElementById("authGate").classList.remove("escondido");
+    try {
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+            throw new Error("Não foi possível carregar o serviço de contas. Verifique a conexão e recarregue a página.");
+        }
+        clienteSupabase = window.supabase.createClient(url, anonKey);
+        document.getElementById("authStatus").textContent = "Verificando sua sessão...";
+        document.getElementById("authStatus").classList.remove("auth-error");
+
+        clienteSupabase.auth.onAuthStateChange((evento, sessao) => {
+            if (evento === "PASSWORD_RECOVERY") {
+                recuperacaoSenhaAtiva = true;
+                document.body.classList.add("auth-required");
+                document.getElementById("authGate").classList.remove("escondido");
+                document.getElementById("formLogin").classList.add("escondido");
+                document.getElementById("formRedefinirSenha").classList.remove("escondido");
+                mostrarStatusAuth("Escolha uma nova senha para sua conta.");
+                return;
+            }
+            window.setTimeout(() => {
+                tratarSessao(sessao).catch(erro => tratarErroDeSessao(erro));
+            }, 0);
+        });
+        const { data, error } = await clienteSupabase.auth.getSession();
+        if (error) throw error;
+        await tratarSessao(data.session);
+    } catch (erro) {
+        console.error("Não foi possível iniciar a conexão com a conta.", erro);
+        mostrarStatusAuth(erro.message || "Não foi possível conectar ao serviço de contas.");
+        document.getElementById("tentarNovamente").classList.remove("escondido");
+        mostrarToast("Falha ao conectar à conta.");
+    } finally {
+        document.body.classList.remove("auth-pending");
     }
 }
 
@@ -33,7 +102,7 @@ function configurarEventos() {
     document.getElementById("formVenda").addEventListener("submit", salvarVenda);
     document.getElementById("telefone").addEventListener("input", mascararTelefone);
     document.getElementById("cpf").addEventListener("input", mascararCPF);
-    document.getElementById("cep").addEventListener("input", mascararCEP);
+    configurarBuscaCEP("cep", "endereco");
     document.getElementById("metodoPagamento").addEventListener("change", atualizarParcelas);
     document.querySelectorAll('input[type="text"], input[type="search"]').forEach(input => {
         input.addEventListener("input", transformarEmMaiusculas);
@@ -47,7 +116,7 @@ function configurarEventos() {
     });
     document.getElementById("telefoneVendaEditada").addEventListener("input", mascararTelefone);
     document.getElementById("cpfVendaEditada").addEventListener("input", mascararCPF);
-    document.getElementById("cepVendaEditada").addEventListener("input", mascararCEP);
+    configurarBuscaCEP("cepVendaEditada", "enderecoVendaEditada");
     document.getElementById("metodoPagamentoVendaEditada").addEventListener("change", atualizarParcelasVendaEditada);
     document.getElementById("lista-clientes").addEventListener("click", tratarAcaoCliente);
     document.getElementById("formEditarCliente").addEventListener("submit", salvarEdicaoCliente);
@@ -63,7 +132,7 @@ function configurarEventos() {
     document.getElementById("imprimirComprovante").addEventListener("click", imprimirComprovante);
     document.getElementById("telefoneClienteEditado").addEventListener("input", mascararTelefone);
     document.getElementById("cpfClienteEditado").addEventListener("input", mascararCPF);
-    document.getElementById("cepClienteEditado").addEventListener("input", mascararCEP);
+    configurarBuscaCEP("cepClienteEditado", "enderecoClienteEditado");
     document.getElementById("modoGrafico").addEventListener("change", atualizarGrafico);
     document.getElementById("exportarDados").addEventListener("click", exportarDados);
     document.getElementById("importarBackup").addEventListener("click", () => {
@@ -71,6 +140,486 @@ function configurarEventos() {
     });
     document.getElementById("arquivoBackup").addEventListener("change", importarDados);
     document.getElementById("limparSistema").addEventListener("click", limparSistema);
+    window.addEventListener("focus", atualizarVendasAoRetomar);
+    document.addEventListener("visibilitychange", atualizarVendasAoRetomar);
+    window.addEventListener("online", () => {
+        if (clienteSupabase && usuarioAutenticado && contaCarregada) {
+            agendarSincronizacaoVendas();
+        }
+    });
+    document.getElementById("formLogin").addEventListener("submit", entrarNaConta);
+    document.getElementById("formRedefinirSenha").addEventListener("submit", salvarNovaSenha);
+    document.getElementById("criarConta").addEventListener("click", criarConta);
+    document.getElementById("recuperarSenha").addEventListener("click", recuperarSenha);
+    document.getElementById("tentarNovamente").addEventListener("click", tentarConectarConta);
+    document.getElementById("sairConta").addEventListener("click", sairDaConta);
+    document.getElementById("importarDadosLegados").addEventListener("click", importarDadosLegados);
+}
+
+function atualizarEstadoContaLocal() {
+    document.getElementById("accountDescription").textContent =
+        "Sem uma conta configurada, seus dados ficam salvos somente neste dispositivo.";
+    document.getElementById("accountSetupHint").classList.remove("escondido");
+    mostrarStatusConta("Modo local ativo. Configure o Supabase para sincronizar entre dispositivos.");
+}
+
+function mostrarStatusConta(mensagem, erro = false) {
+    const status = document.getElementById("accountStatus");
+    status.textContent = mensagem;
+    status.classList.toggle("account-error", erro);
+}
+
+function mostrarStatusAuth(mensagem, erro = false) {
+    const status = document.getElementById("authStatus");
+    status.textContent = mensagem;
+    status.classList.toggle("auth-error", erro);
+}
+
+function atualizarControlesConta() {
+    const autenticado = Boolean(usuarioAutenticado);
+    document.getElementById("accountDescription").textContent = autenticado
+        ? "Suas vendas estão vinculadas à sua conta e sincronizadas entre dispositivos."
+        : "Entre com sua conta para acessar suas vendas sincronizadas.";
+    document.getElementById("accountEmail").textContent = autenticado
+        ? `Conectado como ${usuarioAutenticado.email || "usuário autenticado"}`
+        : "";
+    document.getElementById("accountEmail").classList.toggle("escondido", !autenticado);
+    document.getElementById("sairConta").classList.toggle("escondido", !autenticado);
+    document.getElementById("accountSetupHint").classList.add("escondido");
+    atualizarBotaoImportacaoLegada();
+}
+
+function atualizarBotaoImportacaoLegada() {
+    const botao = document.getElementById("importarDadosLegados");
+    const donoLegado = localStorage.getItem(LEGACY_OWNER_KEY);
+    const possuiArquivo = Boolean(localStorage.getItem(LEGACY_STORAGE_KEY));
+    botao.classList.toggle(
+        "escondido",
+        !usuarioAutenticado || !possuiArquivo || donoLegado !== usuarioAutenticado.id
+    );
+}
+
+async function tratarSessao(sessao) {
+    const usuario = sessao && sessao.user;
+    if (recuperacaoSenhaAtiva) {
+        document.body.classList.add("auth-required");
+        document.getElementById("authGate").classList.remove("escondido");
+        return;
+    }
+    if (!usuario) {
+        if (usuarioAutenticado) {
+            if (canalVendas) {
+                await clienteSupabase.removeChannel(canalVendas);
+                canalVendas = null;
+            }
+            if (erroSincronizacaoConta) {
+                try {
+                    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(vendas));
+                    localStorage.setItem(LEGACY_OWNER_KEY, usuarioAutenticado.id);
+                    localStorage.setItem(LEGACY_MODE_KEY, "pendente");
+                } catch (erro) {
+                    console.error("Não foi possível preservar as alterações pendentes da conta.", erro);
+                    mostrarToast("Não foi possível guardar as alterações pendentes neste dispositivo.");
+                }
+            }
+            usuarioAutenticado = null;
+            contaCarregada = false;
+            erroSincronizacaoConta = null;
+            idsVendasNuvem = new Set();
+            snapshotVendasNuvem = new Map();
+            vendas = [];
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (erro) {
+                console.error("Não foi possível limpar o cache local da conta.", erro);
+                mostrarToast("Não foi possível limpar os dados locais desta conta.");
+            }
+            renderizarDadosVendas();
+        }
+        document.body.classList.add("auth-required");
+        document.getElementById("authGate").classList.remove("escondido");
+        document.getElementById("tentarNovamente").classList.add("escondido");
+        document.getElementById("formLogin").classList.remove("escondido");
+        document.getElementById("formRedefinirSenha").classList.add("escondido");
+        recuperacaoSenhaAtiva = false;
+        mostrarStatusAuth("Entre ou crie uma conta para acessar suas vendas.");
+        atualizarControlesConta();
+        return;
+    }
+
+    if (usuarioAutenticado && usuarioAutenticado.id === usuario.id &&
+        (contaCarregada || usuarioCarregandoId === usuario.id)) return;
+    document.body.classList.add("auth-required");
+    document.getElementById("authGate").classList.remove("escondido");
+    document.getElementById("tentarNovamente").classList.add("escondido");
+    mostrarStatusAuth("Carregando as vendas da sua conta...");
+    usuarioAutenticado = usuario;
+    contaCarregada = false;
+    usuarioCarregandoId = usuario.id;
+
+    try {
+        const { data, error } = await clienteSupabase
+            .from("vendas")
+            .select("id,dados")
+            .eq("user_id", usuario.id);
+        if (error) throw error;
+        if (!usuarioAutenticado || usuarioAutenticado.id !== usuario.id) return;
+
+        const vendasRemotas = normalizarVendasRemotas(data);
+        idsVendasNuvem = new Set(vendasRemotas.map(venda => String(venda.id)));
+        snapshotVendasNuvem = new Map(vendasRemotas.map(venda => [String(venda.id), JSON.stringify(venda)]));
+        vendas = vendasRemotas;
+
+        const donoLegado = localStorage.getItem(LEGACY_OWNER_KEY);
+        if (donoLegado === usuario.id && localStorage.getItem(LEGACY_STORAGE_KEY)) {
+            try {
+                const vendasArquivadas = lerVendasLegadas();
+                if (vendasArquivadas.length > 0) {
+                    document.getElementById("accountStatus").textContent =
+                        "Há vendas antigas guardadas neste dispositivo. Você pode importá-las para esta conta.";
+                }
+            } catch (erro) {
+                console.error("Não foi possível verificar as vendas antigas guardadas.", erro);
+                mostrarToast("O arquivo local de vendas antigas está inválido; os dados da conta continuam disponíveis.");
+            }
+        } else if (!donoLegado && vendasLegadasNaAbertura.length > 0) {
+            const quantidade = vendasLegadasNaAbertura.length;
+            if (window.confirm(
+                `Encontramos ${quantidade} venda(s) salva(s) neste dispositivo. Deseja importá-las para a conta ${usuario.email || "atual"}?`
+            )) {
+                const vendasLocais = vendasLegadasNaAbertura.filter(venda =>
+                    !idsVendasNuvem.has(String(venda.id))
+                );
+                vendas = [...vendas, ...vendasLocais];
+                localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(vendasLegadasNaAbertura));
+                localStorage.setItem(LEGACY_OWNER_KEY, usuario.id);
+                localStorage.setItem(LEGACY_MODE_KEY, "migracao");
+                try {
+                    await sincronizarVendasNuvem();
+                    localStorage.removeItem(LEGACY_STORAGE_KEY);
+                    localStorage.removeItem(LEGACY_MODE_KEY);
+                } catch (erro) {
+                    console.error("Não foi possível importar as vendas antigas para a conta.", erro);
+                    mostrarToast("As vendas antigas foram mantidas neste dispositivo, mas não sincronizaram.");
+                }
+            } else {
+                localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(vendasLegadasNaAbertura));
+                localStorage.setItem(LEGACY_OWNER_KEY, usuario.id);
+                localStorage.setItem(LEGACY_MODE_KEY, "migracao");
+            }
+        }
+
+        persistirCacheVendas();
+        contaCarregada = true;
+        configurarCanalVendas(usuario.id);
+        atualizarControlesConta();
+        mostrarStatusConta("Conta conectada. Sincronização automática ativa.");
+        document.getElementById("authGate").classList.add("escondido");
+        document.body.classList.remove("auth-required");
+        mostrarStatusAuth("Conta conectada.");
+        document.getElementById("tentarNovamente").classList.add("escondido");
+        renderizarDadosVendas();
+    } catch (erro) {
+        contaCarregada = false;
+        throw erro;
+    } finally {
+        if (usuarioCarregandoId === usuario.id) usuarioCarregandoId = null;
+    }
+}
+
+function tratarErroDeSessao(erro) {
+    console.error("Não foi possível carregar os dados da conta.", erro);
+    document.body.classList.add("auth-required");
+    document.getElementById("authGate").classList.remove("escondido");
+    document.getElementById("tentarNovamente").classList.remove("escondido");
+    mostrarStatusAuth(erro.message || "Não foi possível carregar os dados da conta.", true);
+    mostrarToast("Falha ao carregar os dados sincronizados.");
+}
+
+function normalizarVendasRemotas(registros) {
+    if (!Array.isArray(registros)) {
+        throw new Error("O serviço retornou uma lista de vendas inválida.");
+    }
+    return registros.map(registro => {
+        if (!registro || typeof registro.id !== "string" || !vendaValida(registro.dados) ||
+            String(registro.dados.id) !== registro.id) {
+            throw new Error("Há uma venda inválida no banco. Nenhum dado local foi substituído.");
+        }
+        return normalizarVenda(registro.dados);
+    });
+}
+
+function persistirCacheVendas() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(vendas));
+    } catch (erro) {
+        console.error("Não foi possível atualizar o cache local das vendas.", erro);
+        mostrarToast("Os dados estão na conta, mas não puderam ser salvos neste dispositivo.");
+    }
+}
+
+function agendarSincronizacaoVendas() {
+    const sincronizacao = filaSincronizacao.then(() => sincronizarVendasNuvem());
+    filaSincronizacao = sincronizacao.catch(erro => {
+        erroSincronizacaoConta = erro;
+        console.error("Não foi possível sincronizar as vendas.", erro);
+        mostrarStatusConta("Sincronização pendente. Verifique a conexão e tente novamente.", true);
+        mostrarToast("Não foi possível sincronizar. As alterações continuam salvas neste dispositivo.");
+    });
+    return sincronizacao;
+}
+
+async function sincronizarVendasNuvem() {
+    if (!clienteSupabase || !usuarioAutenticado) return;
+    const usuarioId = usuarioAutenticado.id;
+    const vendasAtuais = [...vendas];
+    const idsAtuais = new Set(vendasAtuais.map(venda => String(venda.id)));
+    const vendasAlteradas = vendasAtuais.filter(venda =>
+        snapshotVendasNuvem.get(String(venda.id)) !== JSON.stringify(venda)
+    );
+    if (vendasAlteradas.length > 0) {
+        const registros = vendasAlteradas.map(venda => ({
+            user_id: usuarioId,
+            id: String(venda.id),
+            dados: venda,
+            updated_at: new Date().toISOString()
+        }));
+        const { error } = await clienteSupabase
+            .from("vendas")
+            .upsert(registros, { onConflict: "user_id,id" });
+        if (error) throw error;
+        vendasAlteradas.forEach(venda => {
+            snapshotVendasNuvem.set(String(venda.id), JSON.stringify(venda));
+        });
+    }
+
+    const removidos = [...idsVendasNuvem].filter(id => !idsAtuais.has(id));
+    if (removidos.length > 0) {
+        const { error } = await clienteSupabase
+            .from("vendas")
+            .delete()
+            .eq("user_id", usuarioId)
+            .in("id", removidos);
+        if (error) throw error;
+        removidos.forEach(id => snapshotVendasNuvem.delete(id));
+    }
+
+    if (usuarioAutenticado && usuarioAutenticado.id === usuarioId) {
+        erroSincronizacaoConta = null;
+        idsVendasNuvem = new Set(snapshotVendasNuvem.keys());
+        mostrarStatusConta("Conta conectada. Sincronização automática ativa.");
+        atualizarBotaoImportacaoLegada();
+    }
+}
+
+function configurarCanalVendas(usuarioId) {
+    if (canalVendas) {
+        clienteSupabase.removeChannel(canalVendas);
+    }
+    canalVendas = clienteSupabase
+        .channel(`vendas-${usuarioId}`)
+        .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "vendas",
+            filter: `user_id=eq.${usuarioId}`
+        }, () => agendarAtualizacaoVendasNuvem(usuarioId))
+        .subscribe(estado => {
+            if (estado === "CHANNEL_ERROR" || estado === "TIMED_OUT") {
+                console.error(`Canal de sincronização em tempo real: ${estado}.`);
+                mostrarStatusConta("Sincronização em tempo real indisponível. Atualize a página para buscar alterações.", true);
+            }
+        });
+}
+
+function agendarAtualizacaoVendasNuvem(usuarioId) {
+    const versaoSolicitada = versaoLocalVendas;
+    filaSincronizacao = filaSincronizacao
+        .then(async () => {
+            if (!usuarioAutenticado || usuarioAutenticado.id !== usuarioId) return;
+            if (erroSincronizacaoConta) return;
+            const { data, error } = await clienteSupabase
+                .from("vendas")
+                .select("id,dados")
+                .eq("user_id", usuarioId);
+            if (error) throw error;
+            if (versaoLocalVendas !== versaoSolicitada ||
+                !usuarioAutenticado || usuarioAutenticado.id !== usuarioId) return;
+            vendas = normalizarVendasRemotas(data);
+            idsVendasNuvem = new Set(vendas.map(venda => String(venda.id)));
+            snapshotVendasNuvem = new Map(vendas.map(venda => [String(venda.id), JSON.stringify(venda)]));
+            persistirCacheVendas();
+            renderizarDadosVendas();
+        })
+        .catch(erro => {
+            console.error("Não foi possível atualizar as vendas recebidas de outro dispositivo.", erro);
+            mostrarStatusConta("Não foi possível atualizar as vendas de outros dispositivos.", true);
+            mostrarToast("Falha ao atualizar as vendas sincronizadas.");
+        });
+}
+
+function atualizarVendasAoRetomar() {
+    if (document.visibilityState === "hidden" || !usuarioAutenticado || !contaCarregada) return;
+    agendarSincronizacaoVendas();
+    agendarAtualizacaoVendasNuvem(usuarioAutenticado.id);
+}
+
+function renderizarDadosVendas() {
+    renderDashboard();
+    renderListaCompleta();
+    filtrarClientes();
+    filtrarVendas();
+}
+
+async function entrarNaConta(evento) {
+    evento.preventDefault();
+    const email = document.getElementById("authEmail");
+    const senha = document.getElementById("authPassword");
+    if (!email.reportValidity() || !senha.reportValidity()) return;
+    try {
+        mostrarStatusAuth("Entrando...");
+        const { error } = await clienteSupabase.auth.signInWithPassword({
+            email: email.value.trim(),
+            password: senha.value
+        });
+        if (error) throw error;
+    } catch (erro) {
+        console.error("Não foi possível entrar na conta.", erro);
+        mostrarStatusAuth(erro.message || "Não foi possível entrar. Confira o e-mail e a senha.", true);
+    }
+}
+
+async function criarConta() {
+    const email = document.getElementById("authEmail");
+    const senha = document.getElementById("authPassword");
+    if (!email.reportValidity() || !senha.reportValidity()) return;
+    try {
+        mostrarStatusAuth("Criando sua conta...");
+        const { data, error } = await clienteSupabase.auth.signUp({
+            email: email.value.trim(),
+            password: senha.value
+        });
+        if (error) throw error;
+        if (data.session) {
+            await tratarSessao(data.session);
+        } else {
+            mostrarStatusAuth("Conta criada. Confira seu e-mail para confirmar o cadastro e depois entre.");
+        }
+    } catch (erro) {
+        console.error("Não foi possível criar a conta.", erro);
+        mostrarStatusAuth(erro.message || "Não foi possível criar a conta.", true);
+    }
+}
+
+async function recuperarSenha() {
+    const email = document.getElementById("authEmail");
+    if (!email.reportValidity()) return;
+    try {
+        mostrarStatusAuth("Enviando instruções de recuperação...");
+        const { error } = await clienteSupabase.auth.resetPasswordForEmail(email.value.trim(), {
+            redirectTo: window.location.href
+        });
+        if (error) throw error;
+        mostrarStatusAuth("Se esse e-mail estiver cadastrado, você receberá instruções para redefinir a senha.");
+    } catch (erro) {
+        console.error("Não foi possível enviar a recuperação de senha.", erro);
+        mostrarStatusAuth(erro.message || "Não foi possível enviar o e-mail de recuperação.", true);
+    }
+}
+
+async function salvarNovaSenha(evento) {
+    evento.preventDefault();
+    const senha = document.getElementById("novaSenha");
+    if (!senha.reportValidity()) return;
+    try {
+        mostrarStatusAuth("Salvando a nova senha...");
+        const { error } = await clienteSupabase.auth.updateUser({ password: senha.value });
+        if (error) throw error;
+        recuperacaoSenhaAtiva = false;
+        contaCarregada = false;
+        const { data, error: erroSessao } = await clienteSupabase.auth.getSession();
+        if (erroSessao) throw erroSessao;
+        await tratarSessao(data.session);
+    } catch (erro) {
+        console.error("Não foi possível atualizar a senha.", erro);
+        mostrarStatusAuth(erro.message || "Não foi possível atualizar a senha.", true);
+    }
+}
+
+async function tentarConectarConta() {
+    try {
+        mostrarStatusAuth("Verificando sua conexão...");
+        const { data, error } = await clienteSupabase.auth.getSession();
+        if (error) throw error;
+        await tratarSessao(data.session);
+    } catch (erro) {
+        tratarErroDeSessao(erro);
+    }
+}
+
+async function sairDaConta() {
+    try {
+        mostrarStatusConta("Salvando alterações antes de sair...");
+        await agendarSincronizacaoVendas();
+        const { error } = await clienteSupabase.auth.signOut();
+        if (error) throw error;
+    } catch (erro) {
+        console.error("Não foi possível sair da conta.", erro);
+        mostrarStatusConta(erro.message || "Não foi possível sair da conta.", true);
+        mostrarToast("Não foi possível sair da conta.");
+    }
+}
+
+function lerVendasLegadas() {
+    const conteudo = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!conteudo) return [];
+    const registros = JSON.parse(conteudo);
+    if (!Array.isArray(registros) || registros.some(registro => !vendaValida(registro))) {
+        throw new Error("As vendas antigas guardadas neste dispositivo estão inválidas.");
+    }
+    return registros.map(normalizarVenda);
+}
+
+async function importarDadosLegados() {
+    if (!usuarioAutenticado) return;
+    let vendasLegadas;
+    try {
+        vendasLegadas = lerVendasLegadas();
+    } catch (erro) {
+        console.error("Não foi possível ler as vendas antigas deste dispositivo.", erro);
+        mostrarToast(erro.message || "Não foi possível ler as vendas antigas.");
+        return;
+    }
+    if (vendasLegadas.length === 0) {
+        mostrarToast("Não há vendas antigas para importar.");
+        atualizarBotaoImportacaoLegada();
+        return;
+    }
+    if (!window.confirm(`Importar ${vendasLegadas.length} venda(s) antigas para esta conta?`)) return;
+
+    const vendasPorId = new Map(vendas.map(venda => [String(venda.id), venda]));
+    const sobrescreverExistentes = localStorage.getItem(LEGACY_MODE_KEY) === "pendente";
+    vendasLegadas.forEach(venda => {
+        const id = String(venda.id);
+        if (sobrescreverExistentes || !vendasPorId.has(id)) {
+            vendasPorId.set(id, venda);
+        }
+    });
+    vendas = [...vendasPorId.values()];
+    try {
+        versaoLocalVendas += 1;
+        persistirCacheVendas();
+        await agendarSincronizacaoVendas();
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_MODE_KEY);
+        renderizarDadosVendas();
+        atualizarBotaoImportacaoLegada();
+        mostrarToast("Vendas antigas importadas para a conta.");
+    } catch (erro) {
+        console.error("Não foi possível importar as vendas antigas.", erro);
+        mostrarStatusConta("A importação ficou pendente. As vendas continuam salvas neste dispositivo.", true);
+        mostrarToast("Não foi possível concluir a importação. Tente novamente quando estiver online.");
+    }
 }
 
 function carregarVendas() {
@@ -138,6 +687,10 @@ function normalizarVenda(venda) {
 function salvarVendas() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(vendas));
+        versaoLocalVendas += 1;
+        if (clienteSupabase && usuarioAutenticado) {
+            agendarSincronizacaoVendas();
+        }
         return true;
     } catch (erro) {
         console.error("Não foi possível salvar as vendas.", erro);
@@ -918,6 +1471,52 @@ function mascararCPF(evento) {
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function configurarBuscaCEP(cepId, enderecoId) {
+    const campoCEP = document.getElementById(cepId);
+    campoCEP.addEventListener("input", mascararCEP);
+    campoCEP.addEventListener("input", () => {
+        const digitos = campoCEP.value.replace(/\D/g, "");
+        if (digitos.length === 8) {
+            buscarEnderecoPorCEP(campoCEP, document.getElementById(enderecoId), digitos);
+        }
+    });
+}
+
+async function buscarEnderecoPorCEP(campoCEP, campoEndereco, cepConsultado) {
+    const enderecoInicial = campoEndereco.value;
+    try {
+        const resposta = await fetch(`https://viacep.com.br/ws/${cepConsultado}/json/`, {
+            headers: { Accept: "application/json" }
+        });
+        if (!resposta.ok) {
+            throw new Error(`O serviço de CEP respondeu com o status ${resposta.status}.`);
+        }
+        const dados = await resposta.json();
+        if (campoCEP.value.replace(/\D/g, "") !== cepConsultado) return;
+        if (dados.erro) {
+            mostrarToast("CEP não encontrado. Confira os números e tente novamente.");
+            return;
+        }
+
+        const cidade = dados.localidade && dados.uf
+            ? `${dados.localidade}/${dados.uf}`
+            : dados.localidade || dados.uf || "";
+        const partesEndereco = [dados.logradouro, dados.bairro, cidade]
+            .filter(parte => typeof parte === "string" && parte.trim())
+            .map(parte => parte.trim());
+        if (partesEndereco.length === 0) {
+            throw new Error("O serviço não retornou um endereço para esse CEP.");
+        }
+        if (campoEndereco.value !== enderecoInicial) return;
+        campoEndereco.value = partesEndereco.join(", ").toLocaleUpperCase("pt-BR");
+        mostrarToast("Endereço preenchido pelo CEP.");
+    } catch (erro) {
+        if (campoCEP.value.replace(/\D/g, "") !== cepConsultado) return;
+        console.error("Não foi possível consultar o endereço pelo CEP.", erro);
+        mostrarToast("Não foi possível buscar o CEP. Verifique a conexão e tente novamente.");
+    }
 }
 
 function mascararCEP(evento) {
