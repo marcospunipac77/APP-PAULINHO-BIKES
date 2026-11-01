@@ -1,6 +1,4 @@
-"use strict";
-
 window.PAULINHO_SUPABASE_CONFIG = {
-    url: "",
-    anonKey: ""
+    url: "SUA_PROJECT_URL",
+    anonKey: "SUA_CHAVE_PUBLICA"
 };
